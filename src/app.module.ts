@@ -6,6 +6,8 @@ import { Auth } from './auth/auth.entity';
 import { User } from './auth/user.entity';
 import { UserDetailsController } from './userdetails/user.details.controller';
 import { UserDetailsService } from './userdetails/user.details.service';
+import { GroupModule } from './group/group.module';
+import { Group } from './group/group.entity';
 
 
 @Module({
@@ -22,12 +24,13 @@ import { UserDetailsService } from './userdetails/user.details.service';
         username: configService.get<string>('POSTGRES_USER'),
         password: configService.get<string>('POSTGRES_PASSWORD'),
         database: configService.get<string>('POSTGRES_DB'),
-        entities: [User, Auth],
+        entities: [User, Auth, Group],
         synchronize: true,
       }),
       inject: [ConfigService],
     }),
     AuthModule,
+    GroupModule,
     TypeOrmModule.forFeature([User]), 
   ],
   controllers: [UserDetailsController], 

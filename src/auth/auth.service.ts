@@ -1,6 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { EntityManager, Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -9,6 +9,7 @@ import { User } from './user.entity';
 
 @Injectable()
 export class AuthService {
+  entityManager: any;
   constructor(
     @InjectRepository(Auth)
     private authRepository: Repository<Auth>,
@@ -20,47 +21,68 @@ export class AuthService {
     private configService: ConfigService
   ) {}
 
-  async signup(signupDto: { username: string; password: string; fullName: string; phoneNo: string }) {
-    const { username, password, fullName, phoneNo } = signupDto;
-    
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const auth = this.authRepository.create({ username, password: hashedPassword });
-    const savedAuth = await this.authRepository.save(auth);
-    
-    const users = this.userRepository.create({ fullName, phoneNo, auth: savedAuth });
-    await this.userRepository.save(users);
-    
-    return { message: 'User created successfully' };
-  }
+async signup(signupDto: { username: string; password: string; fullName: string; phoneNo: string }) {
+  const { username, password, fullName, phoneNo } = signupDto;
+
+  // Hash the password
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  // Create the User entity first
+  const user = this.userRepository.create({
+    fullName,
+    phoneNo,
+  });
+
+  // Save the User entity
+  const savedUser = await this.userRepository.save(user);
+
+  // Create the Auth entity and link it to the saved User
+  const auth = this.authRepository.create({
+    username,
+    password: hashedPassword,
+    user: savedUser, // Link the User entity
+  });
+
+  // Save the Auth entity
+  await this.authRepository.save(auth);
+
+  return { message: 'User created successfully' };
+}
+  
 
   async login(loginDto: { username: string; password: string }) {
     const { username, password } = loginDto;
     const auth = await this.authRepository.findOne({ where: { username }, relations: ['user'] });
-
+  
     if (!auth) {
+      console.log('Auth not found for username:', username);
       throw new UnauthorizedException('Invalid credentials');
     }
-
+  
+    console.log('Auth found:', auth);
+    console.log('User associated with Auth:', auth.user);
+  
     const isPasswordValid = await bcrypt.compare(password, auth.password);
-
+  
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }
-
+  
     const payload = { 
-      
       username: auth.username, 
       sub: auth.id,
       userId: auth.user.id
     };
-
+  
     return {
       access_token: this.jwtService.sign(payload),
       userId: auth.user.id,
       message: 'Login successful, Token Verified'
-      
     };
   }
+  
+  
+  
 
   async verifyToken(token: string): Promise<any> {
     const cleanedToken = token.replace(/^"|"$/g, '');

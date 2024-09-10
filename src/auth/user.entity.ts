@@ -1,8 +1,12 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToOne } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToOne, OneToMany, ManyToMany, JoinColumn } from 'typeorm';
+import { Group } from '../group/group.entity';
 import { Auth } from './auth.entity';
 
 @Entity('users')
 export class User {
+    constructor() {
+    console.log('User entity constructed');
+  }
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -19,5 +23,12 @@ export class User {
   googleId: string;
 
   @OneToOne(() => Auth, auth => auth.user)
+  @JoinColumn()
   auth: Auth;
+
+  @OneToMany(() => Group, group => group.creator)
+  createdGroups: Group[];
+
+  @ManyToMany(() => Group, group => group.members)
+  groups: Group[];
 }
