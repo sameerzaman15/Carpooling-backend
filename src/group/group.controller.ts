@@ -15,26 +15,30 @@ export class GroupController {
 @UseGuards(JwtAuthGuard)
 
 @Post('create')
-async createGroup(@Body() body: { name: string; visibility: 'public' | 'private'; userId: number }) {
-  const { name, visibility, userId } = body;
-  if (!name) {
-    throw new Error('Group name is required');
+  async createGroup(@Body() body: { name: string; visibility: 'public' | 'private' }, @GetUser() user: User) {
+    const { name, visibility } = body;
+    if (!name) {
+      throw new BadRequestException('Group name is required');
+    }
+    return this.groupService.createGroup(name, visibility, user.id);
   }
-  return this.groupService.createGroup(name, visibility, userId);
-}
 
-@Post('join')
-async joinGroup(@Body() body: { groupId: number; userId: number }) {
-  const { groupId, userId } = body;
-  return this.groupService.joinGroup(groupId, userId);
-}
+  @Post('join/:id')
+  async joinGroup(@Param('id') groupId: number, @GetUser() user: User) {
+    return this.groupService.joinGroup(groupId, user.id);
+  }
 
-@Get('public')
-async getPublicGroups() {
-  return this.groupService.getPublicGroups();
-}
+  @Get()
+  async getAllGroups() {
+    return this.groupService.getAllGroups();
+  }
 
-@Get('private')
+  @Get('public')
+  async getPublicGroups() {
+    return this.groupService.getPublicGroups();
+  }
+
+  @Get('private')
   async getPrivateGroups(@GetUser() user: User) {
     return this.groupService.getPrivateGroupsForUser(user.id);
   }
@@ -52,19 +56,31 @@ async getPublicGroups() {
     return this.groupService.addUserToPrivateGroup(body.groupId, body.userId, admin.id);
   }
 
-
   @Patch(':id')
   async updateGroup(
-      @Param('id') id: number,
-      @Body() updateGroupDto: UpdateGroupDto
+    @Param('id') id: number,
+    @Body() updateGroupDto: UpdateGroupDto
   ) {
-      console.log('Update request received:', updateGroupDto);
-  
-      if (!updateGroupDto || Object.keys(updateGroupDto).length === 0) {
-          throw new BadRequestException('No fields provided for update');
-      }
-  
-      return this.groupService.updateGroup(id, updateGroupDto);
+    console.log('Update request received:', updateGroupDto);
+    
+    if (!updateGroupDto || Object.keys(updateGroupDto).length === 0) {
+      throw new BadRequestException('No fields provided for update');
+    }
+    
+    return this.groupService.updateGroup(id, updateGroupDto);
   }
 
+  @Post('request-join/:id')
+  async requestToJoinPrivateGroup(@Param('id') groupId: number, @GetUser() user: User) {
+    return this.groupService.requestToJoinPrivateGroup(groupId, user.id);
+  }
+
+  @Post('approve-join/:groupId/:userId')
+  async approveJoinRequest(
+    @Param('groupId') groupId: number,
+    @Param('userId') userId: number,
+    @GetUser() approver: User
+  ) {
+    return this.groupService.approveJoinRequest(groupId, userId, approver.id);
+  }
 }
