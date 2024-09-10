@@ -26,9 +26,13 @@ export class User {
   @JoinColumn()
   auth: Auth;
 
-  @OneToMany(() => Group, group => group.creator)
-  createdGroups: Group[];
-
-  @ManyToMany(() => Group, group => group.members)
+  @ManyToMany(() => Group, group => group.users)
   groups: Group[];
+
+  // @ManyToMany(() => Group, group => group.members)
+  // groups: Group[];
+
+//   @OneToMany(() => JoinRequest, joinRequest => joinRequest.user)
+// joinRequests: JoinRequest[];
+
 }

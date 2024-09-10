@@ -8,7 +8,7 @@ import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
     
-    imports: [TypeOrmModule.forFeature([Group]), AuthModule],  // Include AuthModule
+    imports: [TypeOrmModule.forFeature([Group , User]), AuthModule],  // Include AuthModule
     controllers: [GroupController],
   providers: [GroupService],
   exports: [GroupService],

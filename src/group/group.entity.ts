@@ -1,27 +1,23 @@
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, ManyToMany, JoinTable } from 'typeorm';
+// src/group/group.entity.ts
+import { Entity, Column, PrimaryGeneratedColumn, ManyToMany, JoinTable, OneToMany } from 'typeorm';
 import { User } from '../auth/user.entity';
 
-@Entity('groups')
+@Entity()
 export class Group {
-
-    constructor() {
-        console.log('Group entity constructed');
-      }
-      
-
   @PrimaryGeneratedColumn()
   id: number;
 
   @Column()
   name: string;
 
-  @Column({ nullable: true })
-  description: string;
+  @Column()
+  visibility: 'public' | 'private';
 
-  @ManyToOne(() => User, user => user.createdGroups)
-  creator: User;
 
   @ManyToMany(() => User, user => user.groups)
   @JoinTable()
-  members: User[];
+  users: User[];
+
+//   @OneToMany(() => JoinRequest, joinRequest => joinRequest.group)
+// joinRequests: JoinRequest[];
 }
