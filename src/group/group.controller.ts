@@ -34,6 +34,24 @@ async getPublicGroups() {
   return this.groupService.getPublicGroups();
 }
 
+@Get('private')
+  async getPrivateGroups(@GetUser() user: User) {
+    return this.groupService.getPrivateGroupsForUser(user.id);
+  }
+
+  @Get(':id')
+  async getGroup(@Param('id') id: number, @GetUser() user: User) {
+    return this.groupService.getGroupById(id, user.id);
+  }
+
+  @Post('private/add-user')
+  async addUserToPrivateGroup(
+    @Body() body: { groupId: number; userId: number },
+    @GetUser() admin: User
+  ) {
+    return this.groupService.addUserToPrivateGroup(body.groupId, body.userId, admin.id);
+  }
+
 
   @Patch(':id')
   async updateGroup(

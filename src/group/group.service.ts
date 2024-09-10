@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { QueryFailedError, Repository } from 'typeorm';
 import { Group } from './group.entity';
@@ -91,4 +91,67 @@ async updateGroup(id: number, updateGroupDto: UpdateGroupDto): Promise<Group> {
 
     return updatedGroup;
 }
+
+
+async getPrivateGroupsForUser(userId: number): Promise<Group[]> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['groups'],
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return user.groups.filter(group => group.visibility === 'private');
+  }
+
+  async getGroupById(groupId: number, userId: number): Promise<Group> {
+    const group = await this.groupRepository.findOne({
+      where: { id: groupId },
+      relations: ['users'],
+    });
+
+    if (!group) {
+      throw new NotFoundException('Group not found');
+    }
+
+    if (group.visibility === 'private' && !group.users.some(user => user.id === userId)) {
+      throw new ForbiddenException('You do not have access to this private group');
+    }
+
+    return group;
+  }
+
+async addUserToPrivateGroup(groupId: number, userId: number, adminId: number): Promise<Group> {
+    const group = await this.groupRepository.findOne({
+      where: { id: groupId },
+      relations: ['users'],
+    });
+
+    if (!group) {
+      throw new NotFoundException('Group not found');
+    }
+
+    if (group.visibility !== 'private') {
+      throw new Error('This operation is only allowed for private groups');
+    }
+
+    const admin = group.users.find(user => user.id === adminId);
+    if (!admin) {
+      throw new ForbiddenException('Only group members can add users to a private group');
+    }
+
+    const userToAdd = await this.userRepository.findOne({ where: { id: userId } });
+    if (!userToAdd) {
+      throw new NotFoundException('User to add not found');
+    }
+
+    if (!group.users.some(user => user.id === userToAdd.id)) {
+      group.users.push(userToAdd);
+      await this.groupRepository.save(group);
+    }
+
+    return group;
+  }
 }
