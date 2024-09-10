@@ -16,46 +16,14 @@ export class GroupService {
 
   ) {}
 
-//   async createGroup(createGroupDto: { name: string; description?: string }, creator: User) {
-//     console.log('Creating group with data:', JSON.stringify(createGroupDto));
-//     console.log('Creator:', JSON.stringify(creator));
-
-//     if (!createGroupDto.name) {
-//         throw new BadRequestException('Group name is required');
-//     }
-
-//     const group = this.groupRepository.create({
-//         name: createGroupDto.name,
-//         description: createGroupDto.description,
-//         creator: creator,
-//         members: [creator],
-//     });
-
-//     console.log('Group entity constructed:', JSON.stringify(group));
-
-//     try {
-//         // Attempt to save the group
-//         const savedGroup = await this.groupRepository.save(group);
-//         console.log('Group saved:', JSON.stringify(savedGroup));
-        
-//         return savedGroup;
-//     } catch (error) {
-//         console.error('Error saving group:', error);
-//         if (error instanceof QueryFailedError) {
-//             console.error('SQL Error:', error.query, error.parameters);
-//         }
-//         throw new InternalServerErrorException('Failed to create group: ' + error.message);
-//     }
-// }
 
   
-async createGroup(name: string, userId: number): Promise<Group> {
-
+async createGroup(name: string, visibility: 'public' | 'private', userId: number): Promise<Group> {
     if (!name) {
-        throw new Error('Group name is required');
-      }
+      throw new Error('Group name is required');
+    }
 
-    const group = this.groupRepository.create({ name });
+    const group = this.groupRepository.create({ name, visibility });
     const savedGroup = await this.groupRepository.save(group);
     const user = await this.userRepository.findOne({ where: { id: userId }, relations: ['groups'] });
 
@@ -81,6 +49,10 @@ async createGroup(name: string, userId: number): Promise<Group> {
       throw new NotFoundException('User not found');
     }
 
+    if (group.visibility === 'private') {
+      throw new Error('Cannot join a private group directly');
+    }
+
     group.users.push(user);
     user.groups.push(group);
 
@@ -90,28 +62,11 @@ async createGroup(name: string, userId: number): Promise<Group> {
     return group;
   }
   
+  async getPublicGroups(): Promise<Group[]> {
+    return this.groupRepository.find({ where: { visibility: 'public' } });
+  }
   
 
-//   async getUserGroups(user: User) {
-//     return this.groupRepository.find({
-//       where: [
-//         { creator: { id: user.id } },
-//         { members: { id: user.id } },
-//       ],
-//       relations: ['creator', 'members'],
-//     });
-//   }
-
-//   async getGroupDetails(id: number) {
-//     const group = await this.groupRepository.findOne({
-//       where: { id },
-//       relations: ['creator', 'members'],
-//     });
-//     if (!group) {
-//       throw new NotFoundException('Group not found');
-//     }
-//     return group;
-//   }
 
 
 async updateGroup(id: number, updateGroupDto: UpdateGroupDto): Promise<Group> {

@@ -10,43 +10,30 @@ import { UpdateGroupDto } from './update-user-dto';
 export class GroupController {
   constructor(private groupService: GroupService) {}
 
-//   @Post()
-//   async createGroup(
-//     @Body() createGroupDto: { name: string; description?: string },
-//     @GetUser() user: User
-//   ) {
-//     console.log('Received create group request:', JSON.stringify(createGroupDto));
-//     console.log('User:', JSON.stringify(user));
-//     return this.groupService.createGroup(createGroupDto, user);
-//   }
 
-//   @Get()
-//   getUserGroups(@GetUser() user: User) {
-//     return this.groupService.getUserGroups(user);
-//   }
-
-//   @Get(':id')
-//   getGroupDetails(@Param('id') id: number) {
-//     return this.groupService.getGroupDetails(id);
-//   }
 
 @UseGuards(JwtAuthGuard)
 
 @Post('create')
-async createGroup(@Body() body: { name: string; userId: number }) {
-  const { name, userId } = body;
+async createGroup(@Body() body: { name: string; visibility: 'public' | 'private'; userId: number }) {
+  const { name, visibility, userId } = body;
   if (!name) {
     throw new Error('Group name is required');
   }
-  return this.groupService.createGroup(name, userId);
+  return this.groupService.createGroup(name, visibility, userId);
 }
 
-@UseGuards(JwtAuthGuard)
 @Post('join')
-async joinGroup(@Body() joinGroupDto: { groupId: number }, @Req() req) {
-  const userId = req.user.id;
-  return this.groupService.joinGroup(joinGroupDto.groupId, userId);
+async joinGroup(@Body() body: { groupId: number; userId: number }) {
+  const { groupId, userId } = body;
+  return this.groupService.joinGroup(groupId, userId);
 }
+
+@Get('public')
+async getPublicGroups() {
+  return this.groupService.getPublicGroups();
+}
+
 
   @Patch(':id')
   async updateGroup(

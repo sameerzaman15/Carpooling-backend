@@ -1,4 +1,3 @@
-// src/group/group.entity.ts
 import { Entity, Column, PrimaryGeneratedColumn, ManyToMany, JoinTable, OneToMany } from 'typeorm';
 import { User } from '../auth/user.entity';
 
@@ -18,6 +17,6 @@ export class Group {
   @JoinTable()
   users: User[];
 
-//   @OneToMany(() => JoinRequest, joinRequest => joinRequest.group)
-// joinRequests: JoinRequest[];
+  
+
 }
