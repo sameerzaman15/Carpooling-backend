@@ -40,7 +40,7 @@ export class GroupController {
 
   @Get('private')
   async getPrivateGroups(@GetUser() user: User) {
-    return this.groupService.getPrivateGroupsForUser(user.id);
+    return this.groupService.getPrivateGroups();
   }
 
   @Get(':id')

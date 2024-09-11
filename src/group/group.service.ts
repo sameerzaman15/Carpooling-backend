@@ -111,17 +111,8 @@ export class GroupService {
 //     return updatedGroup;
 // }
 
-async getPrivateGroupsForUser(userId: number): Promise<Group[]> {
-    const user = await this.userRepository.findOne({
-      where: { id: userId },
-      relations: ['groups'],
-    });
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    return user.groups.filter(group => group.visibility === 'private');
+async getPrivateGroups() : Promise<Group[]> {
+  return this.groupRepository.find({ where: { visibility: 'private' } });
   }
 
 
