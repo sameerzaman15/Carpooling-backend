@@ -36,13 +36,16 @@ export class GroupService {
     return savedGroup;
   }
 
-  async joinGroup(groupId: number, userId: number): Promise<{ group: Group; alreadyMember: boolean }> {
+  async joinGroup(groupId: number, userId: number): Promise<{ group: Group; alreadyMember: boolean; status: string }> {
     console.log(`Attempting to join group ${groupId} with user ${userId}`);
   
-    const group = await this.groupRepository.findOne({
-      where: { id: groupId },
-      relations: ['users']
-    });
+    const group = await this.groupRepository
+      .createQueryBuilder('group')
+      .leftJoinAndSelect('group.users', 'user')
+      .where('group.id = :groupId', { groupId })
+      .getOne();
+  
+    console.log('Fetched group:', group);
   
     if (!group) {
       throw new NotFoundException('Group not found');
@@ -53,34 +56,37 @@ export class GroupService {
       relations: ['groups']
     });
   
+    console.log('Fetched user:', user);
+  
     if (!user) {
       throw new NotFoundException('User not found');
     }
   
     if (group.visibility === 'private') {
-      throw new ForbiddenException('Cannot join a private group directly');
+      console.log('Attempting to join a private group');
+      // Instead of throwing an exception, return a status indicating a join request is needed
+      return { group, alreadyMember: false, status: 'join_request_required' };
     }
   
     const userAlreadyInGroup = group.users.some(u => u.id === userId);
   
     if (userAlreadyInGroup) {
-      return { group, alreadyMember: true };
+      console.log('User is already a member of the group');
+      return { group, alreadyMember: true, status: 'already_member' };
     }
   
     group.users.push(user);
     await this.groupRepository.save(group);
   
-    const groupAlreadyInUser = user.groups.some(g => g.id === groupId);
+    console.log('Group after adding user:', group);
   
-    if (!groupAlreadyInUser) {
-      user.groups.push(group);
-      await this.userRepository.save(user);
-    }
+    const updatedGroup = await this.groupRepository
+      .createQueryBuilder('group')
+      .leftJoinAndSelect('group.users', 'user')
+      .where('group.id = :groupId', { groupId })
+      .getOne();
   
-    const updatedGroup = await this.groupRepository.findOne({
-      where: { id: groupId },
-      relations: ['users']
-    });
+    console.log('Updated group after save:', updatedGroup);
   
     if (!updatedGroup) {
       throw new NotFoundException('Updated group not found');
@@ -91,7 +97,7 @@ export class GroupService {
       throw new Error('Failed to add user to group');
     }
   
-    return { group: updatedGroup, alreadyMember: false };
+    return { group: updatedGroup, alreadyMember: false, status: 'joined' };
   }
 
 //   async getPublicGroups(): Promise<Group[]> {
@@ -201,26 +207,35 @@ async getPrivateGroups() : Promise<Group[]> {
   async getAllGroups(): Promise<Group[]> {
     return this.groupRepository.find();
   }
-
   async requestToJoinPrivateGroup(groupId: number, userId: number): Promise<void> {
+    console.log(`Attempting to request join for group ${groupId} with user ${userId}`);
+  
     const group = await this.groupRepository.findOne({ where: { id: groupId }, relations: ['users'] });
+    console.log('Found group:', group);
+  
     const user = await this.userRepository.findOne({ where: { id: userId } });
-
+    console.log('Found user:', user);
+  
     if (!group) {
+      console.log(`Group with id ${groupId} not found`);
       throw new NotFoundException('Group not found');
     }
-
+  
     if (!user) {
+      console.log(`User with id ${userId} not found`);
       throw new NotFoundException('User not found');
     }
-
+  
     if (group.visibility !== 'private') {
+      console.log(`Group ${groupId} is not private. Visibility: ${group.visibility}`);
       throw new BadRequestException('This operation is only allowed for private groups');
     }
-
+  
     // Here you would typically create a join request record in the database
-    // For simplicity, we'll just log it
-    console.log(`User ${userId} has requested to join private group ${groupId}`);
+    // For this example, we'll just log it
+    console.log(`User ${userId} (${user.fullName}) has requested to join private group ${groupId} (${group.name})`);
+  
+    // You might want to add logic here to create a join request in your database
   }
 
   async approveJoinRequest(groupId: number, userId: number, approverId: number): Promise<Group> {

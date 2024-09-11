@@ -43,7 +43,7 @@ export class GroupController {
   async getPrivateGroups(@GetUser() user: User) {
     return this.groupService.getPrivateGroups();
   }
-
+  
   @Get(':id')
   async getGroup(@Param('id') id: number, @GetUser() user: User) {
     console.log('User from @GetUser:', user);
@@ -52,7 +52,7 @@ export class GroupController {
     }
     return this.groupService.getGroupById(id, user.id);
   }
-
+  
   @Post('private/add-user')
   async addUserToPrivateGroup(
     @Body() body: { groupId: number; userId: number },
@@ -64,26 +64,28 @@ export class GroupController {
     }
     return this.groupService.addUserToPrivateGroup(body.groupId, body.userId, admin.id);
   }
-
-  @Patch(':id')
-  async updateGroup(
-    @Param('id') id: number,
-    @Body() updateGroupDto: UpdateGroupDto
-  ) {
-    console.log('Update request received:', updateGroupDto);
-    
-    if (!updateGroupDto || Object.keys(updateGroupDto).length === 0) {
-      throw new BadRequestException('No fields provided for update');
-    }
-    
-    return this.groupService.updateGroup(id, updateGroupDto);
-  }
-
+  
   @Post('request-join/:id')
-  async requestToJoinPrivateGroup(@Param('id') groupId: number, @GetUser() user: User) {
-    return this.groupService.requestToJoinPrivateGroup(groupId, user.id);
+  async requestToJoinPrivateGroup(@Param('id') groupId: number, @GetUser() user: any) {
+    console.log('Request to join private group received');
+    console.log('Group ID:', groupId);
+    console.log('User from @GetUser:', user);
+  
+    if (!user || !user.sub) {
+      console.log('User authentication failed');
+      throw new UnauthorizedException('User not authenticated');
+    }
+  
+    try {
+      // Use user.sub as the userId, since that seems to be the user's ID in the token
+      const result = await this.groupService.requestToJoinPrivateGroup(groupId, user.sub);
+      console.log('Join request processed successfully');
+      return result;
+    } catch (error) {
+      console.error('Error processing join request:', error);
+      throw error;
+    }
   }
-
   @Post('approve-join/:groupId/:userId')
   async approveJoinRequest(
     @Param('groupId') groupId: number,
