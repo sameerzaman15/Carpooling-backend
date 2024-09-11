@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards, Get, Param, Patch, BadRequestException, Req } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Get, Param, Patch, BadRequestException, Req, UnauthorizedException } from '@nestjs/common';
 import { GroupService } from './group.service';
 import { GetUser } from '../auth/get-user.decorator';
 import { JwtAuthGuard } from 'src/jwt/jwt.auth-guard';
@@ -46,6 +46,10 @@ export class GroupController {
 
   @Get(':id')
   async getGroup(@Param('id') id: number, @GetUser() user: User) {
+    console.log('User from @GetUser:', user);
+    if (!user || !user.id) {
+      throw new UnauthorizedException('User not authenticated');
+    }
     return this.groupService.getGroupById(id, user.id);
   }
 
@@ -54,6 +58,10 @@ export class GroupController {
     @Body() body: { groupId: number; userId: number },
     @GetUser() admin: User
   ) {
+    console.log('Admin from @GetUser:', admin);
+    if (!admin || !admin.id) {
+      throw new UnauthorizedException('Admin not authenticated');
+    }
     return this.groupService.addUserToPrivateGroup(body.groupId, body.userId, admin.id);
   }
 
