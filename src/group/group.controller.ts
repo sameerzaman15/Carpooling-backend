@@ -23,10 +23,11 @@ export class GroupController {
     return this.groupService.createGroup(name, visibility, user.id);
   }
 
-  @Post('join/:id')
-  async joinGroup(@Param('id') groupId: number, @GetUser() user: User) {
-    return this.groupService.joinGroup(groupId, user.id);
+  @Post(':id/join')
+  async joinGroup(@Param('id') groupId: number, @GetUser() user: any) {
+    return this.groupService.joinGroup(groupId, user.userId);
   }
+  
 
   @Get()
   async getAllGroups() {

@@ -27,7 +27,18 @@ export class User {
   auth: Auth;
 
   @ManyToMany(() => Group, group => group.users)
+  
   groups: Group[];
+
+  toJSON() {
+    return {
+      id: this.id,
+      fullName: this.fullName,
+      email: this.email,
+      phoneNo: this.phoneNo,
+      groups: this.groups ? this.groups.map(group => ({ id: group.id, name: group.name })) : []
+    };
+  }
 
   // @ManyToMany(() => Group, group => group.members)
   // groups: Group[];

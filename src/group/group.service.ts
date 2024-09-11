@@ -37,29 +37,61 @@ export class GroupService {
   }
 
   async joinGroup(groupId: number, userId: number): Promise<Group> {
-    const group = await this.groupRepository.findOne({ where: { id: groupId }, relations: ['users'] });
-    const user = await this.userRepository.findOne({ where: { id: userId }, relations: ['groups'] });
-
+    console.log(`Attempting to join group ${groupId} with user ${userId}`);
+  
+    const group = await this.groupRepository.findOne({ 
+      where: { id: groupId }, 
+      relations: ['users'] 
+    });
+    
     if (!group) {
       throw new NotFoundException('Group not found');
     }
-
+  
+    const user = await this.userRepository.findOne({ 
+      where: { id: userId }, 
+      relations: ['groups'] 
+    });
+    
     if (!user) {
       throw new NotFoundException('User not found');
     }
-
+  
     if (group.visibility === 'private') {
-      throw new Error('Cannot join a private group directly');
+      throw new ForbiddenException('Cannot join a private group directly');
     }
-
-    group.users.push(user);
-    user.groups.push(group);
-
-    await this.groupRepository.save(group);
-    await this.userRepository.save(user);
-
-    return group;
+  
+    const userAlreadyInGroup = group.users.some(u => u.id === userId);
+    
+    if (!userAlreadyInGroup) {
+      group.users.push(user);
+      await this.groupRepository.save(group);
+    }
+  
+    const groupAlreadyInUser = user.groups.some(g => g.id === groupId);
+    
+    if (!groupAlreadyInUser) {
+      user.groups.push(group);
+      await this.userRepository.save(user);
+    }
+  
+    const updatedGroup = await this.groupRepository.findOne({
+      where: { id: groupId },
+      relations: ['users']
+    });
+    
+    if (!updatedGroup) {
+      throw new NotFoundException('Updated group not found');
+    }
+  
+    const userInGroup = updatedGroup.users.find(u => u.id === userId);
+    if (!userInGroup) {
+      throw new Error('Failed to add user to group');
+    }
+  
+    return updatedGroup;
   }
+
 //   async getPublicGroups(): Promise<Group[]> {
 //     return this.groupRepository.find({ where: { visibility: 'public' } });
 //   }
@@ -115,7 +147,6 @@ async getPrivateGroups() : Promise<Group[]> {
   return this.groupRepository.find({ where: { visibility: 'private' } });
   }
 
-
   async getGroupById(groupId: number, userId: number): Promise<Group> {
     const group = await this.groupRepository.findOne({
       where: { id: groupId },
@@ -132,6 +163,7 @@ async getPrivateGroups() : Promise<Group[]> {
 
     return group;
   }
+
 
   async addUserToPrivateGroup(groupId: number, userId: number, adminId: number): Promise<Group> {
     const group = await this.groupRepository.findOne({
