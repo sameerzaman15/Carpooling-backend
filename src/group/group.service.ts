@@ -36,23 +36,23 @@ export class GroupService {
     return savedGroup;
   }
 
-  async joinGroup(groupId: number, userId: number): Promise<Group> {
+  async joinGroup(groupId: number, userId: number): Promise<{ group: Group; alreadyMember: boolean }> {
     console.log(`Attempting to join group ${groupId} with user ${userId}`);
   
-    const group = await this.groupRepository.findOne({ 
-      where: { id: groupId }, 
-      relations: ['users'] 
+    const group = await this.groupRepository.findOne({
+      where: { id: groupId },
+      relations: ['users']
     });
-    
+  
     if (!group) {
       throw new NotFoundException('Group not found');
     }
   
-    const user = await this.userRepository.findOne({ 
-      where: { id: userId }, 
-      relations: ['groups'] 
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: ['groups']
     });
-    
+  
     if (!user) {
       throw new NotFoundException('User not found');
     }
@@ -62,14 +62,16 @@ export class GroupService {
     }
   
     const userAlreadyInGroup = group.users.some(u => u.id === userId);
-    
-    if (!userAlreadyInGroup) {
-      group.users.push(user);
-      await this.groupRepository.save(group);
+  
+    if (userAlreadyInGroup) {
+      return { group, alreadyMember: true };
     }
   
+    group.users.push(user);
+    await this.groupRepository.save(group);
+  
     const groupAlreadyInUser = user.groups.some(g => g.id === groupId);
-    
+  
     if (!groupAlreadyInUser) {
       user.groups.push(group);
       await this.userRepository.save(user);
@@ -79,7 +81,7 @@ export class GroupService {
       where: { id: groupId },
       relations: ['users']
     });
-    
+  
     if (!updatedGroup) {
       throw new NotFoundException('Updated group not found');
     }
@@ -89,7 +91,7 @@ export class GroupService {
       throw new Error('Failed to add user to group');
     }
   
-    return updatedGroup;
+    return { group: updatedGroup, alreadyMember: false };
   }
 
 //   async getPublicGroups(): Promise<Group[]> {
