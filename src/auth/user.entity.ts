@@ -1,6 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToOne, OneToMany, ManyToMany, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToOne, OneToMany, ManyToMany, JoinColumn, ManyToOne, JoinTable } from 'typeorm';
 import { Group } from '../group/group.entity';
 import { Auth } from './auth.entity';
+import { JoinRequest } from 'src/group/join-requst-entity';
 
 @Entity('users')
 export class User {
@@ -26,9 +27,17 @@ export class User {
   @JoinColumn()
   auth: Auth;
 
+  @OneToMany(() => Group, group => group.owner)
+  createdGroups: Group[];
+
   @ManyToMany(() => Group, group => group.users)
-  
-  groups: Group[];
+  @JoinTable()
+  groups: Group[]; // Remove the array initialization
+
+  @OneToMany(() => JoinRequest, joinRequest => joinRequest.user)
+  joinRequests: JoinRequest[];
+
+
 
   toJSON() {
     return {

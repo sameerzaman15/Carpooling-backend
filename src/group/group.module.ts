@@ -5,10 +5,11 @@ import { GroupController } from './group.controller';
 import { GroupService } from './group.service';
 import { User } from 'src/auth/user.entity';
 import { AuthModule } from 'src/auth/auth.module';
+import { JoinRequest } from './join-requst-entity';
 
 @Module({
     
-    imports: [TypeOrmModule.forFeature([Group , User]), AuthModule],  // Include AuthModule
+    imports: [TypeOrmModule.forFeature([Group , User,JoinRequest]), AuthModule],  // Include AuthModule
     controllers: [GroupController],
   providers: [GroupService],
   exports: [GroupService],

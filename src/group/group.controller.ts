@@ -64,21 +64,37 @@ export class GroupController {
     }
     return this.groupService.addUserToPrivateGroup(body.groupId, body.userId, admin.id);
   }
+
+  @Get(':id/join-requests')
+  async getJoinRequests(
+    @Param('id') groupId: number,
+    @GetUser() user: any
+  ) {
+    console.log('User from @GetUser:', user);
+    return this.groupService.getJoinRequests(groupId, user.userId);
+  }
   
+ 
+ 
   @Post('request-join/:id')
   async requestToJoinPrivateGroup(@Param('id') groupId: number, @GetUser() user: any) {
     console.log('Request to join private group received');
     console.log('Group ID:', groupId);
-    console.log('User from @GetUser:', user);
-  
-    if (!user || !user.sub) {
-      console.log('User authentication failed');
+    console.log('User from @GetUser:', JSON.stringify(user, null, 2));
+
+    if (!user) {
+      console.log('User object is null or undefined');
       throw new UnauthorizedException('User not authenticated');
     }
-  
+
+    if (!user.userId) {
+      console.log('User object does not contain a userId property');
+      console.log('Available properties on user object:', Object.keys(user));
+      throw new UnauthorizedException('User ID not found');
+    }
+
     try {
-      // Use user.sub as the userId, since that seems to be the user's ID in the token
-      const result = await this.groupService.requestToJoinPrivateGroup(groupId, user.sub);
+      const result = await this.groupService.requestToJoinPrivateGroup(groupId, user.userId);
       console.log('Join request processed successfully');
       return result;
     } catch (error) {
@@ -86,12 +102,12 @@ export class GroupController {
       throw error;
     }
   }
-  @Post('approve-join/:groupId/:userId')
-  async approveJoinRequest(
-    @Param('groupId') groupId: number,
-    @Param('userId') userId: number,
-    @GetUser() approver: User
-  ) {
-    return this.groupService.approveJoinRequest(groupId, userId, approver.id);
-  }
+ @Post('approve-join/:groupId/:userId')
+async approveJoinRequest(
+  @Param('groupId') groupId: number,
+  @Param('userId') userId: number,
+  @GetUser() approver: User
+) {
+  return this.groupService.approveJoinRequest(groupId, userId, approver.id);
+}
 }

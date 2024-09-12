@@ -2,23 +2,24 @@
 // import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
 // import { Group } from "./group.entity";
 
-// @Entity()
-// export class JoinRequest {
-//   @PrimaryGeneratedColumn()
-//   id: number;
+import { Column, CreateDateColumn, Entity, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Group } from "./group.entity";
+import { User } from "src/auth/user.entity";
 
-//   @Column()
-//   userId: number;
+@Entity()
+export class JoinRequest {
+  @PrimaryGeneratedColumn()
+  id: number;
 
-//   @Column()
-//   groupId: number;
+  @ManyToOne(() => Group, group => group.joinRequests)
+  group: Group;
 
-//   @Column({ default: 'pending' }) // 'pending', 'approved', 'rejected'
-//   status: 'pending' | 'approved' | 'rejected';
+  @ManyToOne(() => User, user => user.joinRequests)
+  user: User;
 
-//   @ManyToOne(() => User, user => user.joinRequests)
-//   user: User;
+  @CreateDateColumn()
+  createdAt: Date;
 
-//   @ManyToOne(() => Group, group => group.joinRequests)
-//   group: Group;
-// }
+  @Column({ default: 'pending' })
+  status: string;
+}

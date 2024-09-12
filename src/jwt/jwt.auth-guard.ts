@@ -7,9 +7,16 @@ export class JwtAuthGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
-    console.log(request.headers);
-    
-    const token = request.headers.authorization?.split(' ')[1]?.replace(/^"|"$/g, '');
+    const authorizationHeader = request.headers.authorization;
+
+    console.log('Authorization Header:', authorizationHeader);
+
+    if (!authorizationHeader) {
+      throw new UnauthorizedException('Authorization header is missing');
+    }
+
+    const token = authorizationHeader.split(' ')[1]?.trim();
+    console.log('Extracted Token:', token);
 
     if (!token) {
       throw new UnauthorizedException('Authorization token is missing');
@@ -17,10 +24,11 @@ export class JwtAuthGuard implements CanActivate {
 
     try {
       const decoded = await this.authService.verifyToken(token);
-      
+      console.log('Decoded Token Payload:', decoded);
       request.user = decoded;
       return true;
     } catch (err) {
+      console.error('Token Verification Error:', err);
       throw new UnauthorizedException('Invalid token');
     }
   }

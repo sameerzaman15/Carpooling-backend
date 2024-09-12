@@ -8,6 +8,7 @@ import { UserDetailsController } from './userdetails/user.details.controller';
 import { UserDetailsService } from './userdetails/user.details.service';
 import { GroupModule } from './group/group.module';
 import { Group } from './group/group.entity';
+import { JoinRequest } from './group/join-requst-entity';
 
 
 @Module({
@@ -24,7 +25,7 @@ import { Group } from './group/group.entity';
         username: configService.get<string>('POSTGRES_USER'),
         password: configService.get<string>('POSTGRES_PASSWORD'),
         database: configService.get<string>('POSTGRES_DB'),
-        entities: [User, Auth, Group],
+        entities: [User, Auth, Group,JoinRequest ],
         synchronize: true,
       }),
       inject: [ConfigService],
