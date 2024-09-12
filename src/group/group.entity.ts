@@ -13,7 +13,7 @@ export class Group {
   @Column()
   visibility: 'public' | 'private';
 
-  @ManyToOne(() => User, user => user.createdGroups)
+  @ManyToOne(() => User, user => user.createdGroups, { eager: true })
   owner: User;
 
   @ManyToMany(() => User, user => user.groups, { cascade: true })
@@ -26,11 +26,10 @@ export class Group {
   
 
   
-
   toJSON() {
     try {
-      console.log('Group toJSON called. Users:', this.users);
-  
+      console.log('Group toJSON called. Owner:', this.owner);
+      
       const usersArray = Array.isArray(this.users) ? this.users : [];
   
       const result = {
@@ -40,6 +39,7 @@ export class Group {
         owner: this.owner ? {
           id: this.owner.id,
           fullName: this.owner.fullName,
+          // username: this.owner.username
         } : null,
         users: usersArray.map(user => ({
           id: user.id,

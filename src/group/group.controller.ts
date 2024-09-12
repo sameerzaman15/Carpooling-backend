@@ -30,7 +30,10 @@ export class GroupController {
 
     @Get()
     async getAllGroups() {
-        return this.groupService.getAllGroups();
+      console.log('Fetching all groups');
+      const groups = await this.groupService.getAllGroups();
+      console.log('Groups fetched:', JSON.stringify(groups, null, 2));
+      return groups;
     }
 
     @Get('public')
