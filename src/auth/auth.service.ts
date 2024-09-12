@@ -75,7 +75,7 @@ async signup(signupDto: { username: string; password: string; fullName: string; 
     };
   
     return {
-      access_token: this.jwtService.sign(payload),
+      access_token: this.jwtService.sign(payload, {expiresIn: 600000000000000000000}),
       userId: auth.user.id,
       message: 'Login successful, Token Verified'
     };

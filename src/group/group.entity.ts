@@ -28,21 +28,30 @@ export class Group {
   
 
   toJSON() {
-    console.log('Group toJSON called. Users:', this.users);
-
-    const usersArray = Array.isArray(this.users) ? this.users : [];
-
-    const result = {
-      id: this.id,
-      name: this.name,
-      visibility: this.visibility,
-      users: usersArray.map(user => ({
-        id: user.id,
-        fullName: user.fullName,
-      })),
-    };
-
-    console.log('Group toJSON result:', result);
-    return result;
+    try {
+      console.log('Group toJSON called. Users:', this.users);
+  
+      const usersArray = Array.isArray(this.users) ? this.users : [];
+  
+      const result = {
+        id: this.id,
+        name: this.name,
+        visibility: this.visibility,
+        owner: this.owner ? {
+          id: this.owner.id,
+          fullName: this.owner.fullName,
+        } : null,
+        users: usersArray.map(user => ({
+          id: user.id,
+          fullName: user.fullName,
+        })),
+      };
+  
+      console.log('Group toJSON result:', result);
+      return result;
+    } catch (error) {
+      console.error('Error in Group toJSON:', error);
+      return null;
+    }
   }
 }

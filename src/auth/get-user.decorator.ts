@@ -5,6 +5,8 @@ export const GetUser = createParamDecorator(
     const request = ctx.switchToHttp().getRequest();
     const user = request.user;
 
+    console.log(user, "check user")
+
     if (!user || !user.userId) {
       throw new UnauthorizedException('User not authenticated');
     }

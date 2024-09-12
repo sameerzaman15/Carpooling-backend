@@ -28,23 +28,24 @@ export class GroupService {
 
   // Create group and associate user with it
   async createGroup(name: string, visibility: 'public' | 'private', ownerId: number): Promise<Group> {
-    const owner = await this.userRepo.findOne({ where: { id: ownerId } });
-    if (!owner) {
-      throw new NotFoundException('Owner not found');
-    }
-  
+    console.log(`Creating group with name: ${name}, visibility: ${visibility}, ownerId: ${ownerId}`);
+
+    const owner = await this.findUserWithGroups(ownerId);
+    console.log('Owner found:', owner);
+
+    
     const group = this.groupRepo.create({ name, visibility, owner });
     await this.groupRepo.save(group);
-  
+    
     // Optional: add the owner to the group
-    owner.groups = owner.groups || [];
     if (!owner.groups.some(g => g.id === group.id)) {
       owner.groups.push(group);
       await this.userRepo.save(owner);
     }
-  
+    
     return group;
   }
+  
   
   
     
@@ -63,28 +64,24 @@ export class GroupService {
   // Join group logic, handling visibility and membership
   async joinGroup(groupId: number, userId: number): Promise<Group> {
     const group = await this.groupRepo.findOne({ where: { id: groupId }, relations: ['users'] });
-    const user = await this.userRepo.findOne({ where: { id: userId } });
+    const user = await this.findUserWithGroups(userId);
   
     if (!group) {
       throw new NotFoundException('Group not found');
     }
-  
+    
     if (!user) {
       throw new NotFoundException('User not found');
     }
   
-    console.log(`Joining Group ID: ${groupId} with User ID: ${userId}`);
-  
     if (!group.users.some(u => u.id === userId)) {
-      console.log(`Adding User ID: ${userId} to Group ID: ${groupId}`);
       group.users.push(user);
       await this.groupRepo.save(group);
-    } else {
-      console.log(`User ID: ${userId} is already a member of Group ID: ${groupId}`);
     }
   
     return group;
   }
+  
   
   
   
@@ -121,61 +118,57 @@ export class GroupService {
   async getGroupById(groupId: number, userId: number): Promise<Group> {
     const group = await this.findGroupWithUsers(groupId);
   
-    console.log(`Group: ${JSON.stringify(group)}`);
-    console.log(`Requesting user ID: ${userId}`);
-  
-    // Check if the group is private and if the user is a member of this private group
-    if (group.visibility === 'private' && !group.users.some(user => user.id === userId)) {
-      console.log('Access denied: User is not a member of this private group');
-      throw new ForbiddenException('Access denied to private group');
+    if (group.visibility === 'private') {
+      const user = await this.findUserWithGroups(userId);
+      if (!user.groups.some(g => g.id === groupId)) {
+        throw new ForbiddenException('Access denied to private group');
+      }
     }
   
     return group;
   }
+  
   
 
   // Add user to private group by admin
   async addUserToPrivateGroup(groupId: number, userId: number, adminId: number): Promise<Group> {
     const group = await this.findGroupWithUsers(groupId);
-    const userToAdd = await this.userRepo.findOne({ where: { id: userId } });
-    
+    const userToAdd = await this.findUserWithGroups(userId);
+  
     if (!userToAdd) throw new NotFoundException('User not found');
     if (!group.users.some(user => user.id === adminId)) throw new ForbiddenException('Only group members can add users');
-    
+  
     if (!group.users.some(user => user.id === userId)) {
       group.users.push(userToAdd);
       await this.groupRepo.save(group);
     }
-    
+  
     return group;
   }
+  
 
   // Request to join a private group
- async requestToJoinPrivateGroup(groupId: number, userId: number): Promise<void> {
-  const group = await this.groupRepo.findOne({ where: { id: groupId }, relations: ['users'] });
-  if (!group) {
-    throw new NotFoundException(`Group with ID ${groupId} not found`);
+  async requestToJoinPrivateGroup(groupId: number, userId: number): Promise<void> {
+    const group = await this.groupRepo.findOne({ where: { id: groupId } });
+    const user = await this.findUserWithGroups(userId);
+  
+    if (!group) throw new NotFoundException(`Group with ID ${groupId} not found`);
+    if (!user) throw new NotFoundException(`User with ID ${userId} not found`);
+  
+    if (group.visibility !== 'private') {
+      throw new BadRequestException('Only private groups require join requests');
+    }
+  
+    const existingRequest = await this.joinRequestRepo.findOne({
+      where: { group: { id: groupId }, user: { id: userId } },
+    });
+    if (existingRequest) {
+      throw new BadRequestException('Join request already exists');
+    }
+  
+    const joinRequest = this.joinRequestRepo.create({ group, user });
+    await this.joinRequestRepo.save(joinRequest);
   }
-
-  const user = await this.userRepo.findOne({ where: { id: userId } });
-  if (!user) {
-    throw new NotFoundException(`User with ID ${userId} not found`);
-  }
-
-  if (group.visibility !== 'private') {
-    throw new BadRequestException('Only private groups require join requests');
-  }
-
-  // Check if user is already a member
-  if (group.users.some(u => u.id === userId)) {
-    throw new BadRequestException('User is already a member');
-  }
-
-  // Add user to group if not already a member
-  group.users.push(user);
-  await this.groupRepo.save(group);
-}
-
   
   
 
@@ -186,23 +179,18 @@ export class GroupService {
       where: { id: requestId },
       relations: ['user'],
     });
-
+  
     if (!joinRequest) throw new NotFoundException('Join request not found');
-
-    // Check if the approver is a member of the group
-    if (!group.users.some(user => user.id === approverId)) {
-      throw new ForbiddenException('Only group members can approve requests');
-    }
-
-    // Add the user to the group
+    if (!group.users.some(user => user.id === approverId)) throw new ForbiddenException('Only group members can approve requests');
+  
     group.users.push(joinRequest.user);
     await this.groupRepo.save(group);
-
-    // Remove the join request
+  
     await this.joinRequestRepo.remove(joinRequest);
-
+  
     return group;
   }
+  
   
 
   // Fetch all groups
