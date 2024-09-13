@@ -5,9 +5,8 @@ import { JoinRequest } from 'src/group/join-requst-entity';
 
 @Entity('users')
 export class User {
-    constructor() {
-    console.log('User entity constructed');
-  }
+
+
   @PrimaryGeneratedColumn()
   id: number;
 
@@ -32,27 +31,29 @@ export class User {
 
   @ManyToMany(() => Group, group => group.users)
   @JoinTable()
-  groups: Group[]; // Remove the array initialization
+  groups: Group[];
 
   @OneToMany(() => JoinRequest, joinRequest => joinRequest.user)
   joinRequests: JoinRequest[];
 
-
-
   toJSON() {
-    return {
-      id: this.id,
-      fullName: this.fullName,
-      email: this.email,
-      phoneNo: this.phoneNo,
-      groups: this.groups ? this.groups.map(group => ({ id: group.id, name: group.name })) : []
-    };
+    try {
+      console.log('User toJSON called. User:', this);
+      console.log('User toJSON - Groups:', this.groups);
+
+      return {
+        id: this.id,
+        fullName: this.fullName,
+        email: this.email,
+        phoneNo: this.phoneNo,
+        groups: this.groups ? this.groups.map(group => ({
+          id: group.id,
+          name: group.name,
+        })) : [],
+      };
+    } catch (error) {
+      console.error('Error in User toJSON:', error);
+      return null;
+    }
   }
-
-  // @ManyToMany(() => Group, group => group.members)
-  // groups: Group[];
-
-//   @OneToMany(() => JoinRequest, joinRequest => joinRequest.user)
-// joinRequests: JoinRequest[];
-
 }

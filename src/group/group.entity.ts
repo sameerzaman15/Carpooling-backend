@@ -23,15 +23,14 @@ export class Group {
   @OneToMany(() => JoinRequest, joinRequest => joinRequest.group)
   joinRequests: JoinRequest[];
 
-  
-
-  
   toJSON() {
     try {
-      console.log('Group toJSON called. Owner:', this.owner);
-      
+      console.log('Group toJSON called. Group:', this);
+      console.log('Group toJSON - Owner:', this.owner);
+      console.log('Group toJSON - Users:', this.users);
+
       const usersArray = Array.isArray(this.users) ? this.users : [];
-  
+
       const result = {
         id: this.id,
         name: this.name,
@@ -39,14 +38,13 @@ export class Group {
         owner: this.owner ? {
           id: this.owner.id,
           fullName: this.owner.fullName,
-          // username: this.owner.username
         } : null,
         users: usersArray.map(user => ({
           id: user.id,
           fullName: user.fullName,
         })),
       };
-  
+
       console.log('Group toJSON result:', result);
       return result;
     } catch (error) {

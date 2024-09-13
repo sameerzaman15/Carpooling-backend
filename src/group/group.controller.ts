@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Param, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, ForbiddenException, Get, Param, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { User } from 'src/auth/user.entity';
 import { JwtAuthGuard } from 'src/jwt/jwt.auth-guard';
 import { GetUser } from '../auth/get-user.decorator';
@@ -45,14 +45,19 @@ export class GroupController {
     async getPrivateGroups(@GetUser() user: User) {
         return this.groupService.getPrivateGroups();
     }
+    @Get('my-join-requests')
+    async getMyJoinRequests(@GetUser() user: any) {
+        console.log('Fetching join requests for user:', user.userId);
+        return this.groupService.getJoinRequestsForOwner(user.userId);
+    }
 
     @Get(':id')
-    async getGroup(@Param('id') id: number, @GetUser() user: User) {
+    async getGroup(@Param('id') id: number, @GetUser() user: any) {
         console.log('User from @GetUser:', user);
-        if (!user || !user.id) {
+        if (!user || !user.userId) {
             throw new UnauthorizedException('User not authenticated');
         }
-        return this.groupService.getGroupById(id, user.id);
+        return this.groupService.getGroupById(id, user.userId);
     }
 
     @Post('private/add-user')
@@ -76,7 +81,14 @@ export class GroupController {
         return this.groupService.getJoinRequests(groupId, user.userId);
     }
 
-
+  
+    
+    
+    
+    
+    
+    
+    
 
     @Post('request-join/:id')
     async requestToJoinPrivateGroup(@Param('id') groupId: number, @GetUser() user: any) {
