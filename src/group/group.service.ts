@@ -39,19 +39,29 @@ import {
     }
   
     async createGroup(name: string, visibility: 'public' | 'private', ownerId: number): Promise<Group> {
-        
-        const owner = await this.userRepo.findOne({ where: { id: ownerId } });
-  
-      const group = this.groupRepo.create({ name, visibility, owner });
-      await this.groupRepo.save(group);
-  
-      if (!owner.groups.some(g => g.id === group.id)) {
-        owner.groups.push(group);
-        await this.userRepo.save(owner);
+        const owner = await this.userRepo.findOne({ 
+          where: { id: ownerId },
+          relations: ['groups']  
+        });
+    
+        if (!owner) {
+          throw new NotFoundException('Owner not found');
+        }
+    
+        const group = this.groupRepo.create({ name, visibility, owner });
+        await this.groupRepo.save(group);
+    
+        if (!owner.groups) {
+          owner.groups = [];
+        }
+    
+        if (!owner.groups.some(g => g.id === group.id)) {
+          owner.groups.push(group);
+          await this.userRepo.save(owner);
+        }
+    
+        return group;
       }
-  
-      return group;
-    }
   
     async joinGroup(groupId: number, userId: number): Promise<Group> {
       const group = await this.findGroupWithUsers(groupId);
@@ -181,7 +191,7 @@ import {
   
       return this.joinRequestRepo.find({
         where: { group: { id: groupId }, status: 'pending' },
-        relations: ['user']
+        relations: ['user'] 
       });
     }
   }
