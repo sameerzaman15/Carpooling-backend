@@ -21,13 +21,22 @@ import {
     ) {}
   
     private async findUserWithGroups(userId: number): Promise<User> {
+      console.log('Fetching user with ID:', userId); // Log the user ID being requested
+    
       const user = await this.userRepo.findOne({
         where: { id: userId },
         relations: ['groups']
       });
-      if (!user) throw new NotFoundException('User not found');
+    
+      if (!user) {
+        console.log('User not found with ID:', userId); // If no user found, log this
+        throw new NotFoundException('User not found');
+      }
+    
+      console.log('User found:', JSON.stringify(user, null, 2)); // Log the entire user object
       return user;
     }
+    
   
     // private async findGroupWithUsers(groupId: number): Promise<Group> {
     //   const group = await this.groupRepo.findOne({
@@ -42,35 +51,46 @@ import {
 
     async findGroupWithUsers(groupId: number) {
       try {
+        console.log('Fetching group with ID:', groupId); // Check the group ID being requested
+    
         const group = await this.groupRepo.findOne({ 
           where: { id: groupId }, 
           relations: ['users', 'owner'] 
         });
+    
         if (!group) {
-          console.log('Group not found for ID:', groupId);
+          console.log('Group not found for ID:', groupId); // If no group found, log this
           throw new NotFoundException('Group not found');
         }
-        console.log('Group found with ID:', groupId, 'Details:', group);
+    
+        console.log('Group found:', JSON.stringify(group, null, 2)); // Log the entire group object
         return group;
       } catch (error) {
-        console.error('Error finding group with ID:', groupId, 'Error:', error);
+        console.error('Error finding group:', error); // Log any error that occurs
         throw new InternalServerErrorException('Error finding group');
       }
     }
     
+    
     async createGroup(name: string, visibility: 'public' | 'private', ownerId: number): Promise<Group> {
+      console.log('Creating group. Name:', name, 'Visibility:', visibility, 'Owner ID:', ownerId); // Log the inputs
+    
       const owner = await this.userRepo.findOne({ 
         where: { id: ownerId },
-        relations: ['groups']  
+        relations: ['groups']
       });
     
       if (!owner) {
-        console.log('Owner not found with ID:', ownerId);
+        console.log('Owner not found for ID:', ownerId); // Log if the owner is not found
         throw new NotFoundException('Owner not found');
       }
     
+      console.log('Owner found:', JSON.stringify(owner, null, 2)); // Log the owner object
+    
       const group = this.groupRepo.create({ name, visibility, owner });
       await this.groupRepo.save(group);
+    
+      console.log('Group saved:', JSON.stringify(group, null, 2)); // Log the newly saved group
     
       if (!owner.groups) {
         owner.groups = [];
@@ -79,24 +99,63 @@ import {
       if (!owner.groups.some(g => g.id === group.id)) {
         owner.groups.push(group);
         await this.userRepo.save(owner);
+        console.log('Updated owner with new group:', JSON.stringify(owner, null, 2)); // Log updated owner
       }
     
-      console.log('Group created with ID:', group.id, 'Owner ID:', ownerId);
       return group;
     }
     
-  
+    
     async joinGroup(groupId: number, userId: number): Promise<Group> {
-      const group = await this.findGroupWithUsers(groupId);
-      const user = await this.findUserWithGroups(userId);
-  
-      if (!group.users.some(u => u.id === userId)) {
-        group.users.push(user);
-        await this.groupRepo.save(group);
-      }
-  
-      return group;
+      console.log('Joining group. Group ID:', groupId, 'User ID:', userId);
+    
+      return this.groupRepo.manager.transaction(async transactionalEntityManager => {
+        const group = await transactionalEntityManager.findOne(Group, {
+          where: { id: groupId },
+          relations: ['users', 'owner']
+        });
+    
+        if (!group) {
+          console.log('Group not found:', groupId);
+          throw new NotFoundException('Group not found');
+        }
+    
+        const user = await transactionalEntityManager.findOne(User, {
+          where: { id: userId }
+        });
+    
+        if (!user) {
+          console.log('User not found:', userId);
+          throw new NotFoundException('User not found');
+        }
+    
+        console.log('Group before joining:', JSON.stringify(group, null, 2));
+        console.log('User attempting to join:', JSON.stringify(user, null, 2));
+    
+        if (!group.users.some(u => u.id === userId)) {
+          // Directly insert into the junction table
+          await transactionalEntityManager.query(
+            `INSERT INTO users_groups_group ("usersId", "groupId") VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+            [userId, groupId]
+          );
+    
+          console.log('User added to group');
+        } else {
+          console.log('User already in group');
+        }
+    
+        // Fetch the updated group
+        const updatedGroup = await transactionalEntityManager.findOne(Group, {
+          where: { id: groupId },
+          relations: ['users', 'owner']
+        });
+    
+        console.log('Updated group:', JSON.stringify(updatedGroup, null, 2));
+    
+        return updatedGroup;
+      });
     }
+    
   
     async createJoinRequest(groupId: number, userId: number): Promise<void> {
       const group = await this.findGroupWithUsers(groupId);
