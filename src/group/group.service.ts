@@ -183,7 +183,10 @@ import {
     
   
     async getPublicGroups(): Promise<Group[]> {
-      return this.groupRepo.find({ where: { visibility: 'public' } });
+      return this.groupRepo.find({
+        where: { visibility: 'public' },
+        relations: ['users', 'owner']
+      });
     }
   
     async getPrivateGroups(): Promise<Group[]> {
