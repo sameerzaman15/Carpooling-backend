@@ -334,5 +334,37 @@ import {
       }
     }
     
+    
+  async declineJoinRequest(requestId: number, declinerId: number): Promise<void> {
+    return this.groupRepo.manager.transaction(async transactionalEntityManager => {
+      const joinRequest = await transactionalEntityManager.findOne(JoinRequest, {
+        where: { id: requestId },
+        relations: ['group', 'user'],
+      });
+
+      if (!joinRequest) {
+        throw new NotFoundException('Join request not found');
+      }
+
+      const group = await transactionalEntityManager.findOne(Group, {
+        where: { id: joinRequest.group.id },
+        relations: ['owner'],
+      });
+
+      if (!group) {
+        throw new NotFoundException('Group not found');
+      }
+
+      if (group.owner.id !== declinerId) {
+        throw new ForbiddenException('Only the group owner can decline join requests');
+      }
+
+      joinRequest.status = 'rejected';
+      await transactionalEntityManager.save(joinRequest);
+
+      console.log('Join request declined successfully');
+    });
+  }
+
   }
   

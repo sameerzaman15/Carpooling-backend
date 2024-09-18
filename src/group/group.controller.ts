@@ -93,4 +93,10 @@ export class GroupController {
       return { message: 'Join request sent successfully' };
     }
 
+    @Post('join-requests/:requestId/decline')
+    async declineJoinRequest(@Param('requestId') requestId: number, @GetUser() user: any) {
+      await this.groupService.declineJoinRequest(requestId, user.userId);
+      return { message: 'Join request declined successfully' };
+    }
+
 }
