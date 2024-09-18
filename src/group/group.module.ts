@@ -6,6 +6,7 @@ import { GroupService } from './group.service';
 import { User } from 'src/auth/user.entity';
 import { AuthModule } from 'src/auth/auth.module';
 import { JoinRequest } from './join-requst-entity';
+import { DataSource } from 'typeorm';
 
 @Module({
     

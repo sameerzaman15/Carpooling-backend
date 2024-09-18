@@ -20,6 +20,7 @@ export class JoinRequest {
   @CreateDateColumn()
   createdAt: Date;
 
-  @Column({ default: 'pending' })
-  status: string;
+  @Column()
+  status: 'pending' | 'approved' | 'rejected';
+
 }

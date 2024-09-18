@@ -38,8 +38,8 @@ export class User {
 
   toJSON() {
     try {
-      console.log('User toJSON called. User:', this);
-      console.log('User toJSON - Groups:', this.groups);
+      // console.log('User toJSON called. User:', this);
+      // console.log('User toJSON - Groups:', this.groups);
 
       return {
         id: this.id,

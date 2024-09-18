@@ -21,89 +21,61 @@ import {
     ) {}
   
     private async findUserWithGroups(userId: number): Promise<User> {
-      console.log('Fetching user with ID:', userId); // Log the user ID being requested
-    
       const user = await this.userRepo.findOne({
         where: { id: userId },
         relations: ['groups']
       });
-    
+  
       if (!user) {
-        console.log('User not found with ID:', userId); // If no user found, log this
         throw new NotFoundException('User not found');
       }
-    
-      console.log('User found:', JSON.stringify(user, null, 2)); // Log the entire user object
+  
       return user;
     }
-    
+
+
+    private async findGroupWithUsers(groupId: number): Promise<Group> {
+      const group = await this.groupRepo.findOne({
+        where: { id: groupId },
+        relations: ['users', 'owner']
+      });
   
-    // private async findGroupWithUsers(groupId: number): Promise<Group> {
-    //   const group = await this.groupRepo.findOne({
-    //     where: { id: groupId },
-    //     relations: ['users', 'owner']
-    //   });
-    //   console.log('Loaded Group:', group);
-
-    //   if (!group) throw new NotFoundException('Group not found');
-    //   return group;
-    // }
-
-    async findGroupWithUsers(groupId: number) {
-      try {
-        console.log('Fetching group with ID:', groupId); // Check the group ID being requested
-    
-        const group = await this.groupRepo.findOne({ 
-          where: { id: groupId }, 
-          relations: ['users', 'owner'] 
-        });
-    
-        if (!group) {
-          console.log('Group not found for ID:', groupId); // If no group found, log this
-          throw new NotFoundException('Group not found');
-        }
-    
-        console.log('Group found:', JSON.stringify(group, null, 2)); // Log the entire group object
-        return group;
-      } catch (error) {
-        console.error('Error finding group:', error); // Log any error that occurs
-        throw new InternalServerErrorException('Error finding group');
+      if (!group) {
+        throw new NotFoundException('Group not found');
       }
+  
+      return group;
     }
+  
     
     
     async createGroup(name: string, visibility: 'public' | 'private', ownerId: number): Promise<Group> {
-      console.log('Creating group. Name:', name, 'Visibility:', visibility, 'Owner ID:', ownerId); // Log the inputs
-    
-      const owner = await this.userRepo.findOne({ 
-        where: { id: ownerId },
-        relations: ['groups']
-      });
-    
+      const owner = await this.userRepo.findOne({ where: { id: ownerId } });
       if (!owner) {
-        console.log('Owner not found for ID:', ownerId); // Log if the owner is not found
         throw new NotFoundException('Owner not found');
       }
-    
-      console.log('Owner found:', JSON.stringify(owner, null, 2)); // Log the owner object
-    
+  
       const group = this.groupRepo.create({ name, visibility, owner });
       await this.groupRepo.save(group);
-    
-      console.log('Group saved:', JSON.stringify(group, null, 2)); // Log the newly saved group
-    
-      if (!owner.groups) {
-        owner.groups = [];
-      }
-    
-      if (!owner.groups.some(g => g.id === group.id)) {
-        owner.groups.push(group);
-        await this.userRepo.save(owner);
-        console.log('Updated owner with new group:', JSON.stringify(owner, null, 2)); // Log updated owner
-      }
-    
+  
       return group;
     }
+  
+    // async joinGroup(groupId: number, userId: number): Promise<Group> {
+    //   const group = await this.findGroupWithUsers(groupId);
+    //   const user = await this.findUserWithGroups(userId);
+  
+    //   if (group.visibility === 'private') {
+    //     throw new ForbiddenException('Cannot directly join a private group');
+    //   }
+  
+    //   if (!group.users.some(u => u.id === userId)) {
+    //     group.users.push(user);
+    //     await this.groupRepo.save(group);
+    //   }
+  
+    //   return group;
+    // }
     
     
     async joinGroup(groupId: number, userId: number): Promise<Group> {
@@ -160,25 +132,21 @@ import {
     async createJoinRequest(groupId: number, userId: number): Promise<void> {
       const group = await this.findGroupWithUsers(groupId);
       const user = await this.findUserWithGroups(userId);
-    
+  
       if (group.visibility !== 'private') {
-        console.log('Join requests are only allowed for private groups');
-        throw new BadRequestException('Join requests are only for private groups');
+        throw new BadRequestException('Join requests are only allowed for private groups');
       }
-    
+  
       const existingRequest = await this.joinRequestRepo.findOne({
         where: { group: { id: groupId }, user: { id: userId }, status: 'pending' }
       });
-    
+  
       if (existingRequest) {
-        console.log('Join request already exists for user:', userId);
         throw new BadRequestException('Join request already exists');
       }
-    
+  
       const joinRequest = this.joinRequestRepo.create({ group, user, status: 'pending' });
       await this.joinRequestRepo.save(joinRequest);
-    
-      console.log('Join request created for user:', userId, 'Group ID:', groupId);
     }
     
   
@@ -249,22 +217,73 @@ import {
       await this.joinRequestRepo.save(joinRequest);
     }
   
-    async approveJoinRequest(groupId: number, requestId: number, approverId: number): Promise<Group> {
-      const group = await this.findGroupWithUsers(groupId);
-      const joinRequest = await this.joinRequestRepo.findOne({
-        where: { id: requestId },
-        relations: ['user']
+    async approveJoinRequest(requestId: number, approverId: number): Promise<Group> {
+      return this.groupRepo.manager.transaction(async transactionalEntityManager => {
+        // Fetch the join request with related group and user
+        const joinRequest = await transactionalEntityManager.findOne(JoinRequest, {
+          where: { id: requestId },
+          relations: ['group', 'user'],
+        });
+    
+        if (!joinRequest) {
+          throw new NotFoundException('Join request not found');
+        }
+    
+        // Fetch the group including its users and owner
+        const group = await transactionalEntityManager.findOne(Group, {
+          where: { id: joinRequest.group.id },
+          relations: ['users', 'owner'],
+        });
+    
+        if (!group) {
+          throw new NotFoundException('Group not found');
+        }
+    
+        // Check if the approver is the owner of the group
+        if (group.owner.id !== approverId) {
+          throw new ForbiddenException('Only the group owner can approve join requests');
+        }
+    
+        // Check if the user already exists in the group
+        const userExistsInGroup = group.users.some(u => u.id === joinRequest.user.id);
+    
+        console.log('Approving join request...');
+        console.log('Group ID:', group.id);
+        console.log('Group Name:', group.name);
+        console.log('Group Owner ID:', group.owner.id);
+        console.log('User ID:', joinRequest.user.id);
+        console.log('User Full Name:', joinRequest.user.fullName);
+    
+        // If the user is not already in the group, add them
+        if (!userExistsInGroup) {
+          // Use the query builder to insert into the junction table
+          await transactionalEntityManager
+            .createQueryBuilder()
+            .insert()
+            .into('users_groups_group')
+            .values({ usersId: joinRequest.user.id, groupId: group.id })
+            .execute();
+    
+          console.log('User added to group successfully');
+        }
+    
+        // Update the join request status to 'approved'
+        joinRequest.status = 'approved';
+    
+        // Save the updated join request
+        await transactionalEntityManager.save(joinRequest);
+        console.log('Join request approved successfully');
+    
+        // Fetch the updated group
+        const updatedGroup = await transactionalEntityManager.findOne(Group, {
+          where: { id: group.id },
+          relations: ['users', 'owner'],
+        });
+    
+        return updatedGroup;
       });
-  
-      if (!joinRequest) throw new NotFoundException('Join request not found');
-      if (!group.users.some(user => user.id === approverId)) throw new ForbiddenException('Only group members can approve requests');
-  
-      group.users.push(joinRequest.user);
-      await this.groupRepo.save(group);
-      await this.joinRequestRepo.remove(joinRequest);
-  
-      return group;
     }
+    
   
     async getAllGroups(): Promise<Group[]> {
         const groups = await this.groupRepo.find({
@@ -273,16 +292,16 @@ import {
         console.log('Fetched groups:', JSON.stringify(groups, null, 2));
         return groups;
       }
-      async getJoinRequests(groupId: number, requestingUserId: number): Promise<JoinRequest[]> {
+      async getJoinRequests(groupId: number, ownerId: number): Promise<JoinRequest[]> {
         const group = await this.findGroupWithUsers(groupId);
-      
-        if (group.owner.id !== requestingUserId && !group.users.some(user => user.id === requestingUserId)) {
-          throw new ForbiddenException('Only group members or the owner can view join requests');
+    
+        if (group.owner.id !== ownerId) {
+          throw new ForbiddenException('Only the group owner can view join requests');
         }
-      
+    
         return this.joinRequestRepo.find({
           where: { group: { id: groupId }, status: 'pending' },
-          relations: ['user'] 
+          relations: ['user']
         });
       }
 

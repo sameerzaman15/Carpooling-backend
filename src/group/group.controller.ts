@@ -15,17 +15,19 @@ export class GroupController {
 
     @Post('create')
     async createGroup(@Body() body: { name: string; visibility: 'public' | 'private' }, @GetUser() user: any) {
-        const { name, visibility } = body;
-        if (!name) {
-            throw new BadRequestException('Group name is required');
-        }
-        return this.groupService.createGroup(name, visibility, user.userId);
+      const { name, visibility } = body;
+      if (!name) {
+        throw new BadRequestException('Group name is required');
+      }
+      return this.groupService.createGroup(name, visibility, user.userId);
     }
 
+    
     @Post(':id/join')
     async joinGroup(@Param('id') groupId: number, @GetUser() user: any) {
-        return this.groupService.joinGroup(groupId, user.userId);
+      return this.groupService.joinGroup(groupId, user.userId);
     }
+  
 
 
     @Get()
@@ -72,56 +74,23 @@ export class GroupController {
         return this.groupService.addUserToPrivateGroup(body.groupId, body.userId, admin.id);
     }
 
+    
+
     @Get(':id/join-requests')
-    async getJoinRequests(
-        @Param('id') groupId: number,
-        @GetUser() user: any
-    ) {
-        console.log('User from @GetUser:', user);
-        return this.groupService.getJoinRequests(groupId, user.userId);
+    async getJoinRequests(@Param('id') groupId: number, @GetUser() user: any) {
+      return this.groupService.getJoinRequests(groupId, user.userId);
     }
 
-  
-    
-    
-    
-    
-    
-    
-    
+    @Post('join-requests/:requestId/approve')
+    async approveJoinRequest(@Param('requestId') requestId: number, @GetUser() user: any) {
+      return this.groupService.approveJoinRequest(requestId, user.userId);
+    }
 
-    @Post('request-join/:id')
+
+    @Post(':id/request-join')
     async requestToJoinPrivateGroup(@Param('id') groupId: number, @GetUser() user: any) {
-        console.log('Request to join private group received');
-        console.log('Group ID:', groupId);
-        console.log('User from @GetUser:', JSON.stringify(user, null, 2));
-
-        if (!user) {
-            console.log('User object is null or undefined');
-            throw new UnauthorizedException('User not authenticated');
-        }
-
-        if (!user.userId) {
-            console.log('User object does not contain a userId property');
-            console.log('Available properties on user object:', Object.keys(user));
-            throw new UnauthorizedException('User ID not found');
-        }
-
-        try {
-            const result = await this.groupService.requestToJoinPrivateGroup(groupId, user.userId);
-            console.log('Join request processed successfully');
-            return result;
-        } catch (error) {
-            console.error('Error processing join request:', error);
-            throw error;
-        }
+      await this.groupService.createJoinRequest(groupId, user.userId);
+      return { message: 'Join request sent successfully' };
     }
-    @Post('approve-join/:groupId/:userId')
-    async approveJoinRequest(
-        @Param('groupId') groupId: number,
-        @Param('userId') userId: number,
-        @GetUser() approver: User
-    ) {
-        return this.groupService.approveJoinRequest(groupId, userId, approver.id);
-    }
+
 }

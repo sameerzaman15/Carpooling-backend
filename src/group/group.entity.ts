@@ -25,9 +25,9 @@ export class Group {
 
   toJSON() {
     try {
-      console.log('Group toJSON called. Group:', this);
-      console.log('Group toJSON - Owner:', this.owner);
-      console.log('Group toJSON - Users:', this.users);
+      // console.log('Group toJSON called. Group:', this);
+      // console.log('Group toJSON - Owner:', this.owner);
+      // console.log('Group toJSON - Users:', this.users);
 
       const usersArray = Array.isArray(this.users) ? this.users : [];
 
