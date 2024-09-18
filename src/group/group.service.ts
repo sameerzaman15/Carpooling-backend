@@ -158,7 +158,9 @@ import {
     }
   
     async getPrivateGroups(): Promise<Group[]> {
-      return this.groupRepo.find({ where: { visibility: 'private' } });
+      return this.groupRepo.find({ where: { visibility: 'private' },
+        relations: ['users', 'owner']
+      });
     }
   
     async updateGroup(id: number, updateGroupDto: UpdateGroupDto): Promise<Group> {
