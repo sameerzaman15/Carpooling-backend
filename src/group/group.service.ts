@@ -420,7 +420,20 @@ import {
   }
 
 
-  
+  async updateGroupName(groupId: number, newName: string, userId: number): Promise<Group> {
+    const group = await this.findGroupWithUsers(groupId);
+
+    if (!group) {
+      throw new NotFoundException('Group not found');
+    }
+
+    if (group.visibility === 'private' && group.owner.id !== userId) {
+      throw new ForbiddenException('Only the owner can update a private group\'s name');
+    }
+
+    group.name = newName;
+    return this.groupRepo.save(group);
+  }
 
   }
   

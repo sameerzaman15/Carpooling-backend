@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, Param, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, Param, Patch, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { User } from 'src/auth/user.entity';
 import { JwtAuthGuard } from 'src/jwt/jwt.auth-guard';
 import { GetUser } from '../auth/get-user.decorator';
@@ -106,6 +106,18 @@ export class GroupController {
       return { message: 'Group deleted successfully' };
     }
 
-    
+    @Patch(':id/update-name')
+    async updateGroupName(
+      @Param('id') groupId: number,
+      @Body('name') newName: string,
+      @GetUser() user: any
+    ) {
+      if (!newName || newName.trim() === '') {
+        throw new BadRequestException('New group name is required');
+      }
+  
+      return this.groupService.updateGroupName(groupId, newName, user.userId);
+    }
+  
 
 }
