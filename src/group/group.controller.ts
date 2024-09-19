@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, ForbiddenException, Get, Param, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, Param, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { User } from 'src/auth/user.entity';
 import { JwtAuthGuard } from 'src/jwt/jwt.auth-guard';
 import { GetUser } from '../auth/get-user.decorator';
@@ -98,5 +98,14 @@ export class GroupController {
       await this.groupService.declineJoinRequest(requestId, user.userId);
       return { message: 'Join request declined successfully' };
     }
+
+    
+    @Delete(':id')
+    async deleteGroup(@Param('id') groupId: number, @GetUser() user: any) {
+      await this.groupService.deleteGroup(groupId, user.userId);
+      return { message: 'Group deleted successfully' };
+    }
+
+    
 
 }

@@ -29,6 +29,9 @@ export class User {
   @OneToMany(() => Group, group => group.owner)
   createdGroups: Group[];
 
+  @Column({ default: 'user' })
+  role: string;
+
   @ManyToMany(() => Group, group => group.users)
   @JoinTable()
   groups: Group[];

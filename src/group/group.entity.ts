@@ -45,7 +45,7 @@ export class Group {
         })),
       };
 
-      console.log('Group toJSON result:', result);
+      // console.log('Group toJSON result:', result);
       return result;
     } catch (error) {
       console.error('Error in Group toJSON:', error);

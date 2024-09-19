@@ -27,6 +27,7 @@ import { JoinRequest } from './group/join-requst-entity';
         database: configService.get<string>('POSTGRES_DB'),
         entities: [User, Auth, Group,JoinRequest ],
         synchronize: true,
+        logging: true
       }),
       inject: [ConfigService],
     }),

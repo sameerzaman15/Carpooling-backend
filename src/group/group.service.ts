@@ -366,5 +366,61 @@ import {
     });
   }
 
+  async deleteGroup(groupId: number, userId: number): Promise<void> {
+    return this.groupRepo.manager.transaction(async transactionalEntityManager => {
+      const group = await this.findGroupWithUsers(groupId);
+      const user = await this.userRepo.findOne({ where: { id: userId } });
+
+      console.log('Attempting to delete group:', JSON.stringify(group, null, 2));
+      console.log('User attempting deletion:', JSON.stringify(user, null, 2));
+
+      if (!group) {
+        throw new NotFoundException('Group not found');
+      }
+
+      if (!group.owner) {
+        console.log('Group owner is null or undefined');
+        throw new InternalServerErrorException('Group owner information is missing');
+      }
+
+      console.log('Group owner ID:', group.owner.id);
+
+      // Check if user is owner or has admin role
+      if (group.owner.id !== userId && user.role !== 'admin') {
+        console.log('User is not the owner of the group and is not an admin');
+        throw new ForbiddenException('You do not have permission to delete this group');
+      }
+
+      // Delete all join requests associated with this group
+      const joinRequestDeleteResult = await transactionalEntityManager
+        .createQueryBuilder()
+        .delete()
+        .from(JoinRequest)
+        .where("groupId = :groupId", { groupId })
+        .execute();
+
+      console.log('Deleted join requests:', joinRequestDeleteResult.affected);
+
+      // Remove all user-group associations
+      const userGroupDeleteResult = await transactionalEntityManager
+        .createQueryBuilder()
+        .delete()
+        .from('users_groups_group')
+        .where("groupId = :groupId", { groupId })
+        .execute();
+
+      console.log('Deleted user-group associations:', userGroupDeleteResult.affected);
+
+      // Delete the group
+      const deleteResult = await transactionalEntityManager.remove(group);
+      console.log('Delete result:', deleteResult);
+
+      console.log('Group deleted successfully');
+    });
+  }
+
+
+  
+
   }
   
