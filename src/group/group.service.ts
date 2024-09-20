@@ -434,6 +434,48 @@ import {
     group.name = newName;
     return this.groupRepo.save(group);
   }
+  async leaveGroup(groupId: number, userId: number): Promise<void> {
+    return this.groupRepo.manager.transaction(async transactionalEntityManager => {
+      console.log(`Attempting to leave group. Group ID: ${groupId}, User ID: ${userId}`);
+
+      const group = await this.findGroupWithUsers(groupId);
+      console.log('Group found:', JSON.stringify(group, null, 2));
+
+      const user = await this.findUserWithGroups(userId);
+      console.log('User found:', JSON.stringify(user, null, 2));
+
+      const isMember = group.users.some(u => u.id === userId);
+      const isOwner = group.owner.id === userId;
+      console.log(`Is user a member of the group? ${isMember}`);
+      console.log(`Is user the owner of the group? ${isOwner}`);
+
+      if (!isMember && !isOwner) {
+        console.log(`User ${userId} is neither a member nor the owner of group ${groupId}`);
+        throw new BadRequestException('User is not a member of this group');
+      }
+
+      if (isOwner) {
+        if (group.users.length === 0) {
+          // If the owner is the only user, delete the group
+          await transactionalEntityManager.remove(group);
+          console.log(`Group ${groupId} deleted as the owner was the only member`);
+        } else {
+          // Transfer ownership to another user
+          const newOwner = group.users[0];
+          group.owner = newOwner;
+          group.users = group.users.filter(u => u.id !== newOwner.id);
+          console.log(`Ownership of group ${groupId} transferred to user ${newOwner.id}`);
+        }
+      } else {
+        // Remove the user from the group
+        group.users = group.users.filter(u => u.id !== userId);
+      }
+
+      await transactionalEntityManager.save(group);
+
+      console.log(`User ${userId} has successfully left group ${groupId}`);
+    });
+  }
 
   }
   

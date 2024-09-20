@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, Param, Patch, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, InternalServerErrorException, Param, Patch, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { User } from 'src/auth/user.entity';
 import { JwtAuthGuard } from 'src/jwt/jwt.auth-guard';
 import { GetUser } from '../auth/get-user.decorator';
@@ -118,6 +118,23 @@ export class GroupController {
   
       return this.groupService.updateGroupName(groupId, newName, user.userId);
     }
+
+
   
+    @Post(':id/leave')
+    async leaveGroup(@Param('id') groupId: number, @GetUser() user: any) {
+      console.log(`Leave group request received. Group ID: ${groupId}, User ID: ${user.userId}`);
+      try {
+        await this.groupService.leaveGroup(groupId, user.userId);
+        console.log(`User ${user.userId} successfully left group ${groupId}`);
+        return { message: 'Successfully left the group' };
+      } catch (error) {
+        console.error('Error leaving group:', error);
+        if (error instanceof BadRequestException) {
+          throw error;
+        }
+        throw new InternalServerErrorException('An error occurred while leaving the group');
+      }
+    }
 
 }
