@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, InternalServerErrorException, Param, Patch, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, Param, Patch, Post, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { User } from 'src/auth/user.entity';
 import { JwtAuthGuard } from 'src/jwt/jwt.auth-guard';
 import { GetUser } from '../auth/get-user.decorator';
@@ -7,132 +7,94 @@ import { GroupService } from './group.service';
 @Controller('groups')
 @UseGuards(JwtAuthGuard)
 export class GroupController {
-    constructor(private groupService: GroupService) { }
+  constructor(private groupService: GroupService) {}
 
+  @Post('create')
+  async createGroup(@Body() body: { name: string; visibility: 'public' | 'private' }, @GetUser() user: any) {
+    if (!body.name) throw new BadRequestException('Group name is required');
+    return this.groupService.createGroup(body.name, body.visibility, user.userId);
+  }
 
+  @Post(':id/join')
+  async joinGroup(@Param('id') groupId: number, @GetUser() user: any) {
+    return this.groupService.joinGroup(groupId, user.userId);
+  }
 
-    @UseGuards(JwtAuthGuard)
+  @Get()
+  async getAllGroups() {
+    return this.groupService.getAllGroups();
+  }
 
-    @Post('create')
-    async createGroup(@Body() body: { name: string; visibility: 'public' | 'private' }, @GetUser() user: any) {
-      const { name, visibility } = body;
-      if (!name) {
-        throw new BadRequestException('Group name is required');
-      }
-      return this.groupService.createGroup(name, visibility, user.userId);
-    }
+  @Get('public')
+  async getPublicGroups() {
+    return this.groupService.getPublicGroups();
+  }
 
-    
-    @Post(':id/join')
-    async joinGroup(@Param('id') groupId: number, @GetUser() user: any) {
-      return this.groupService.joinGroup(groupId, user.userId);
-    }
-  
+  @Get('private')
+  async getPrivateGroups() {
+    return this.groupService.getPrivateGroups();
+  }
 
+  @Get('my-join-requests')
+  async getMyJoinRequests(@GetUser() user: any) {
+    return this.groupService.getJoinRequestsForOwner(user.userId);
+  }
 
-    @Get()
-    async getAllGroups() {
-      console.log('Fetching all groups');
-      const groups = await this.groupService.getAllGroups();
-      console.log('Groups fetched:', JSON.stringify(groups, null, 2));
-      return groups;
-    }
+  @Get(':id')
+  async getGroup(@Param('id') id: number, @GetUser() user: any) {
+    if (!user || !user.userId) throw new UnauthorizedException('User not authenticated');
+    return this.groupService.getGroupById(id, user.userId);
+  }
 
-    @Get('public')
-    async getPublicGroups() {
-        return this.groupService.getPublicGroups();
-    }
+  @Post('private/add-user')
+  async addUserToPrivateGroup(@Body() body: { groupId: number; userId: number }, @GetUser() admin: User) {
+    if (!admin || !admin.id) throw new UnauthorizedException('Admin not authenticated');
+    return this.groupService.addUserToPrivateGroup(body.groupId, body.userId, admin.id);
+  }
 
-    @Get('private')
-    async getPrivateGroups(@GetUser() user: User) {
-        return this.groupService.getPrivateGroups();
-    }
-    @Get('my-join-requests')
-    async getMyJoinRequests(@GetUser() user: any) {
-        console.log('Fetching join requests for user:', user.userId);
-        return this.groupService.getJoinRequestsForOwner(user.userId);
-    }
+  @Get(':id/join-requests')
+  async getJoinRequests(@Param('id') groupId: number, @GetUser() user: any) {
+    return this.groupService.getJoinRequests(groupId, user.userId);
+  }
 
-    @Get(':id')
-    async getGroup(@Param('id') id: number, @GetUser() user: any) {
-        console.log('User from @GetUser:', user);
-        if (!user || !user.userId) {
-            throw new UnauthorizedException('User not authenticated');
-        }
-        return this.groupService.getGroupById(id, user.userId);
-    }
+  @Post('join-requests/:requestId/approve')
+  async approveJoinRequest(@Param('requestId') requestId: number, @GetUser() user: any) {
+    return this.groupService.approveJoinRequest(requestId, user.userId);
+  }
 
-    @Post('private/add-user')
-    async addUserToPrivateGroup(
-        @Body() body: { groupId: number; userId: number },
-        @GetUser() admin: User
-    ) {
-        console.log('Admin from @GetUser:', admin);
-        if (!admin || !admin.id) {
-            throw new UnauthorizedException('Admin not authenticated');
-        }
-        return this.groupService.addUserToPrivateGroup(body.groupId, body.userId, admin.id);
-    }
+  @Post(':id/request-join')
+  async requestToJoinPrivateGroup(@Param('id') groupId: number, @GetUser() user: any) {
+    await this.groupService.createJoinRequest(groupId, user.userId);
+    return { message: 'Join request sent successfully' };
+  }
 
-    
+  @Post('join-requests/:requestId/decline')
+  async declineJoinRequest(@Param('requestId') requestId: number, @GetUser() user: any) {
+    await this.groupService.declineJoinRequest(requestId, user.userId);
+    return { message: 'Join request declined successfully' };
+  }
 
-    @Get(':id/join-requests')
-    async getJoinRequests(@Param('id') groupId: number, @GetUser() user: any) {
-      return this.groupService.getJoinRequests(groupId, user.userId);
-    }
+  @Delete(':id')
+  async deleteGroup(@Param('id') groupId: number, @GetUser() user: any) {
+    await this.groupService.deleteGroup(groupId, user.userId);
+    return { message: 'Group deleted successfully' };
+  }
 
-    @Post('join-requests/:requestId/approve')
-    async approveJoinRequest(@Param('requestId') requestId: number, @GetUser() user: any) {
-      return this.groupService.approveJoinRequest(requestId, user.userId);
-    }
+  @Patch(':id/update-name')
+  async updateGroupName(@Param('id') groupId: number, @Body('name') newName: string, @GetUser() user: any) {
+    if (!newName || newName.trim() === '') throw new BadRequestException('New group name is required');
+    return this.groupService.updateGroupName(groupId, newName, user.userId);
+  }
 
+  @Post(':id/leave')
+  async leaveGroup(@Param('id') groupId: number, @GetUser() user: any) {
+    await this.groupService.leaveGroup(groupId, user.userId);
+    return { message: 'Successfully left the group' };
+  }
 
-    @Post(':id/request-join')
-    async requestToJoinPrivateGroup(@Param('id') groupId: number, @GetUser() user: any) {
-      await this.groupService.createJoinRequest(groupId, user.userId);
-      return { message: 'Join request sent successfully' };
-    }
-
-    @Post('join-requests/:requestId/decline')
-    async declineJoinRequest(@Param('requestId') requestId: number, @GetUser() user: any) {
-      await this.groupService.declineJoinRequest(requestId, user.userId);
-      return { message: 'Join request declined successfully' };
-    }
-
-    
-    @Delete(':id')
-    async deleteGroup(@Param('id') groupId: number, @GetUser() user: any) {
-      await this.groupService.deleteGroup(groupId, user.userId);
-      return { message: 'Group deleted successfully' };
-    }
-
-    @Patch(':id/update-name')
-    async updateGroupName(
-      @Param('id') groupId: number,
-      @Body('name') newName: string,
-      @GetUser() user: any
-    ) {
-      if (!newName || newName.trim() === '') {
-        throw new BadRequestException('New group name is required');
-      }
-  
-      return this.groupService.updateGroupName(groupId, newName, user.userId);
-    }
-
-    @Post(':id/leave')
-    async leaveGroup(@Param('id') groupId: number, @GetUser() user: any) {
-      await this.groupService.leaveGroup(groupId, user.userId);
-      return { message: 'Successfully left the group' };
-    }
-
-    @Delete(':groupId/users/:userId')
-    async removeUserFromGroup(
-      @Param('groupId') groupId: number, 
-      @Param('userId') userIdToRemove: number, 
-      @GetUser() user: any
-    ) {
-      await this.groupService.removeUserFromGroup(groupId, userIdToRemove, user.userId);
-      return { message: 'User successfully removed from the group' };
-    }
-
+  @Delete(':groupId/users/:userId')
+  async removeUserFromGroup(@Param('groupId') groupId: number, @Param('userId') userIdToRemove: number, @GetUser() user: any) {
+    await this.groupService.removeUserFromGroup(groupId, userIdToRemove, user.userId);
+    return { message: 'User successfully removed from the group' };
+  }
 }
