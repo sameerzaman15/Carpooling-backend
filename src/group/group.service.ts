@@ -470,5 +470,59 @@ import {
     });
   }
 
+  async removeUserFromGroup(groupId: number, userIdToRemove: number, ownerId: number): Promise<void> {
+    return this.groupRepo.manager.transaction(async transactionalEntityManager => {
+      console.log(`Attempting to remove user ${userIdToRemove} from group ${groupId} by owner ${ownerId}`);
+
+      const group = await this.groupRepo.findOne({
+        where: { id: groupId },
+        relations: ['owner'],
+      });
+      
+      if (!group) {
+        console.log(`Group ${groupId} not found`);
+        throw new NotFoundException('Group not found');
+      }
+
+      console.log(`Group found:`, JSON.stringify(group, null, 2));
+
+      if (group.owner.id !== ownerId) {
+        console.log(`User ${ownerId} is not the owner of group ${groupId}`);
+        throw new ForbiddenException('Only the group owner can remove users');
+      }
+
+      if (group.owner.id === userIdToRemove) {
+        console.log(`Attempt to remove owner ${userIdToRemove} from group ${groupId}`);
+        throw new BadRequestException('The owner cannot be removed from the group');
+      }
+
+      // Check if the user is a member of the group
+      const userGroupAssociation = await transactionalEntityManager
+        .createQueryBuilder()
+        .select("*")
+        .from('users_groups_group', 'ug')
+        .where("ug.usersId = :userId AND ug.groupId = :groupId", { userId: userIdToRemove, groupId })
+        .getRawOne();
+      
+      console.log(`User-Group association in junction table:`, JSON.stringify(userGroupAssociation, null, 2));
+      
+      if (!userGroupAssociation) {
+        throw new BadRequestException('User is not a member of this group');
+      }
+
+      // Remove the association in the junction table
+      const deleteResult = await transactionalEntityManager
+        .createQueryBuilder()
+        .delete()
+        .from('users_groups_group')
+        .where("usersId = :userId AND groupId = :groupId", { userId: userIdToRemove, groupId })
+        .execute();
+
+      console.log(`Delete result from junction table:`, JSON.stringify(deleteResult, null, 2));
+
+      console.log(`User ${userIdToRemove} has been removed from group ${groupId} by owner ${ownerId}`);
+    });
+  }
+
   }
   

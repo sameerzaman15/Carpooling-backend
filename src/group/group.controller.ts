@@ -125,4 +125,14 @@ export class GroupController {
       return { message: 'Successfully left the group' };
     }
 
+    @Delete(':groupId/users/:userId')
+    async removeUserFromGroup(
+      @Param('groupId') groupId: number, 
+      @Param('userId') userIdToRemove: number, 
+      @GetUser() user: any
+    ) {
+      await this.groupService.removeUserFromGroup(groupId, userIdToRemove, user.userId);
+      return { message: 'User successfully removed from the group' };
+    }
+
 }
